@@ -168,6 +168,52 @@
         }
       }
     },
+    "EnterpriseLogAccessIamRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "arn:aws:iam::802587217904:root"
+              },
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {
+                  "sts:ExternalId": "ServerlessEnterprise-43ce7ad8-4f69-4ec7-8335-e4a6f4261f9d"
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "LogFilterAccess",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:FilterLogEvents"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "ImgDashanalysisLogGroup",
+                        "Arn"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
     "ImgDashanalysisLambdaFunction": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
@@ -175,9 +221,9 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/image-analysis/dev/1621384991944-2021-05-19T00:43:11.944Z/image-analysis.zip"
+          "S3Key": "serverless/image-analysis/dev/1621391567082-2021-05-19T02:32:47.082Z/image-analysis.zip"
         },
-        "Handler": "handler.main",
+        "Handler": "s_img_analysis.handler",
         "Runtime": "nodejs12.x",
         "FunctionName": "image-analysis-dev-img-analysis",
         "MemorySize": 1024,
@@ -193,14 +239,14 @@
         "ImgDashanalysisLogGroup"
       ]
     },
-    "ImgDashanalysisLambdaVersionICKw0s3ZzZ8aux2hcihy6lVWjZB2yLg0gfFYxg9xLE": {
+    "ImgDashanalysisLambdaVersioncTwi77PGfJ0S8bN2W91kKTTnZZgo5bPcGX3uQJc": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ImgDashanalysisLambdaFunction"
         },
-        "CodeSha256": "RCOK/UIfzIhAcnyv5HHHNIoehaix9wtJJNNxcCFmLLE="
+        "CodeSha256": "LpUx0YUwyH/hMSrz/BgkmZG4ngXlAT9CFejYh8JRWOI="
       }
     },
     "HttpApi": {
@@ -208,6 +254,12 @@
       "Properties": {
         "Name": "dev-image-analysis",
         "ProtocolType": "HTTP"
+      }
+    },
+    "HttpApiLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/http-api/image-analysis-dev"
       }
     },
     "HttpApiStage": {
@@ -220,8 +272,18 @@
         "AutoDeploy": true,
         "DefaultRouteSettings": {
           "DetailedMetricsEnabled": false
+        },
+        "AccessLogSettings": {
+          "DestinationArn": {
+            "Fn::GetAtt": [
+              "HttpApiLogGroup",
+              "Arn"
+            ]
+          },
+          "Format": "{\"requestTime\":\"$context.requestTime\",\"requestId\":\"$context.requestId\",\"apiId\":\"$context.apiId\",\"resourcePath\":\"$context.routeKey\",\"path\":\"$context.path\",\"httpMethod\":\"$context.httpMethod\",\"stage\":\"$context.stage\",\"status\":\"$context.status\",\"integrationStatus\":\"$context.integrationStatus\",\"integrationLatency\":\"$context.integrationLatency\",\"responseLatency\":\"$context.responseLatency\",\"responseLength\":\"$context.responseLength\",\"errorMessage\":\"$context.error.message\",\"format\":\"SLS_HTTP_API_LOG\",\"version\":\"1.0.0\"}"
         }
-      }
+      },
+      "DependsOn": "HttpApiLogGroup"
     },
     "ImgDashanalysisLambdaPermissionHttpApi": {
       "Type": "AWS::Lambda::Permission",
@@ -297,6 +359,26 @@
         }
       },
       "DependsOn": "HttpApiIntegrationImgDashanalysis"
+    },
+    "CloudWatchLogsSubscriptionFilterImgDashanalysisLogGroup": {
+      "Type": "AWS::Logs::SubscriptionFilter",
+      "Properties": {
+        "DestinationArn": "arn:aws:logs:us-east-1:802587217904:destination:43ce7ad8-4f69-4ec7-8335-e4a6f4261f9d#4j1JsLbPL5pr728x0T#image-analysis#dev",
+        "FilterPattern": "?\"REPORT RequestId: \" ?\"SERVERLESS_ENTERPRISE\"",
+        "LogGroupName": {
+          "Ref": "ImgDashanalysisLogGroup"
+        }
+      }
+    },
+    "CloudWatchLogsSubscriptionFilterHttpApiLogGroup": {
+      "Type": "AWS::Logs::SubscriptionFilter",
+      "Properties": {
+        "DestinationArn": "arn:aws:logs:us-east-1:802587217904:destination:43ce7ad8-4f69-4ec7-8335-e4a6f4261f9d#4j1JsLbPL5pr728x0T#image-analysis#dev",
+        "FilterPattern": "\"SLS_HTTP_API_LOG\"",
+        "LogGroupName": {
+          "Ref": "HttpApiLogGroup"
+        }
+      }
     }
   },
   "Outputs": {
@@ -308,10 +390,21 @@
         "Name": "sls-image-analysis-dev-ServerlessDeploymentBucketName"
       }
     },
+    "EnterpriseLogAccessIamRole": {
+      "Value": {
+        "Fn::GetAtt": [
+          "EnterpriseLogAccessIamRole",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "sls-image-analysis-dev-EnterpriseLogAccessIamRole"
+      }
+    },
     "ImgDashanalysisLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ImgDashanalysisLambdaVersionICKw0s3ZzZ8aux2hcihy6lVWjZB2yLg0gfFYxg9xLE"
+        "Ref": "ImgDashanalysisLambdaVersioncTwi77PGfJ0S8bN2W91kKTTnZZgo5bPcGX3uQJc"
       },
       "Export": {
         "Name": "sls-image-analysis-dev-ImgDashanalysisLambdaFunctionQualifiedArn"
