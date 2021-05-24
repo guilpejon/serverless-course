@@ -20,7 +20,9 @@
           "Action": [
             "dynamodb:GetItem",
             "dynamodb:UpdateItem",
-            "dynamodb:PutItem"
+            "dynamodb:PutItem",
+            "dynamodb:ListStreams",
+            "dynamodb:DescribeStream"
           ],
           "Resource": "arn:aws:dynamodb:us-east-1:*:table/Heroes"
         }
@@ -106,6 +108,12 @@
             "Type": "AWS::Logs::LogGroup",
             "Properties": {
               "LogGroupName": "/aws/lambda/trigger-dynamo-dev-hero-insert"
+            }
+          },
+          "HeroDashtriggerLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/trigger-dynamo-dev-hero-trigger"
             }
           },
           "IamRoleLambdaExecution": {
@@ -195,7 +203,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/trigger-dynamo/dev/1621885924783-2021-05-24T19:52:04.783Z/trigger-dynamo.zip"
+                "S3Key": "serverless/trigger-dynamo/dev/1621888617994-2021-05-24T20:36:57.994Z/trigger-dynamo.zip"
               },
               "Handler": "handler.heroesInsert",
               "Runtime": "nodejs12.x",
@@ -218,14 +226,54 @@
               "HeroDashinsertLogGroup"
             ]
           },
-          "HeroDashinsertLambdaVersionmjzp6xkxEpZqDM2FLJ5hgySTUNz1m34wrQIcY4tt8U": {
+          "HeroDashtriggerLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/trigger-dynamo/dev/1621888617994-2021-05-24T20:36:57.994Z/trigger-dynamo.zip"
+              },
+              "Handler": "handler.heroesTrigger",
+              "Runtime": "nodejs12.x",
+              "FunctionName": "trigger-dynamo-dev-hero-trigger",
+              "MemorySize": 1024,
+              "Timeout": 6,
+              "Environment": {
+                "Variables": {
+                  "DYNAMODB_TABLE": "Heroes"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "HeroDashtriggerLogGroup"
+            ]
+          },
+          "HeroDashinsertLambdaVersionuINnDycmm0Td98PjN6L2fBhUoumj5Hg2NRdTHB2vNo": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "HeroDashinsertLambdaFunction"
               },
-              "CodeSha256": "d8zWw6x4+bE4CkjMaaUZe/hQpff0rMmM9s7o0kcf6dk="
+              "CodeSha256": "whBxN4Wnk1MVoK0dQ7FL9Xlec4jRvZKfm5gjJwzu+7A="
+            }
+          },
+          "HeroDashtriggerLambdaVersionZZJX37jNfgn5bitZ3VRR36SebAMcg6mMABF4JjI": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "HeroDashtriggerLambdaFunction"
+              },
+              "CodeSha256": "whBxN4Wnk1MVoK0dQ7FL9Xlec4jRvZKfm5gjJwzu+7A="
             }
           },
           "HeroesTable": {
@@ -254,7 +302,10 @@
               ],
               "ProvisionedThroughput": {
                 "ReadCapacityUnits": 1,
-                "WriteCapacityUnits": 1
+                "WriteCapacityUnits": 1,
+                "StreamSpecification": {
+                  "StreamViewType": "NEW_AND_OLD_IMAGES"
+                }
               }
             }
           }
@@ -271,10 +322,19 @@
           "HeroDashinsertLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "HeroDashinsertLambdaVersionmjzp6xkxEpZqDM2FLJ5hgySTUNz1m34wrQIcY4tt8U"
+              "Ref": "HeroDashinsertLambdaVersionuINnDycmm0Td98PjN6L2fBhUoumj5Hg2NRdTHB2vNo"
             },
             "Export": {
               "Name": "sls-trigger-dynamo-dev-HeroDashinsertLambdaFunctionQualifiedArn"
+            }
+          },
+          "HeroDashtriggerLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "HeroDashtriggerLambdaVersionZZJX37jNfgn5bitZ3VRR36SebAMcg6mMABF4JjI"
+            },
+            "Export": {
+              "Name": "sls-trigger-dynamo-dev-HeroDashtriggerLambdaFunctionQualifiedArn"
             }
           }
         }
@@ -380,7 +440,29 @@
         "timeout": 6,
         "runtime": "nodejs12.x",
         "vpc": {},
-        "versionLogicalId": "HeroDashinsertLambdaVersionmjzp6xkxEpZqDM2FLJ5hgySTUNz1m34wrQIcY4tt8U"
+        "versionLogicalId": "HeroDashinsertLambdaVersionuINnDycmm0Td98PjN6L2fBhUoumj5Hg2NRdTHB2vNo"
+      },
+      "hero-trigger": {
+        "handler": "handler.heroesTrigger",
+        "events": [
+          {
+            "type": "dynamodb",
+            "arn": {
+              "Fn::GetAtt:": [
+                "HeroesTable",
+                "StreamArn"
+              ]
+            },
+            "stream": null
+          }
+        ],
+        "name": "trigger-dynamo-dev-hero-trigger",
+        "package": {},
+        "memory": 1024,
+        "timeout": 6,
+        "runtime": "nodejs12.x",
+        "vpc": {},
+        "versionLogicalId": "HeroDashtriggerLambdaVersionZZJX37jNfgn5bitZ3VRR36SebAMcg6mMABF4JjI"
       }
     },
     "resources": {
@@ -411,7 +493,10 @@
             ],
             "ProvisionedThroughput": {
               "ReadCapacityUnits": 1,
-              "WriteCapacityUnits": 1
+              "WriteCapacityUnits": 1,
+              "StreamSpecification": {
+                "StreamViewType": "NEW_AND_OLD_IMAGES"
+              }
             }
           }
         }
@@ -440,7 +525,7 @@
     "artifact": "/Users/guilpejon/Courses/Curso Serverless AWS/serverless-aws-course/demo04-trigger-dynamodb/trigger-dynamo/.serverless/trigger-dynamo.zip"
   },
   "package": {
-    "artifactDirectoryName": "serverless/trigger-dynamo/dev/1621885924783-2021-05-24T19:52:04.783Z",
+    "artifactDirectoryName": "serverless/trigger-dynamo/dev/1621888617994-2021-05-24T20:36:57.994Z",
     "artifact": "trigger-dynamo.zip"
   }
 }
